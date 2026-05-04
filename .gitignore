@@ -17,6 +17,7 @@ training_metrics.csv
 # Checkpoints ignorieren, aber Ordnerstruktur behalten
 checkpoints/*
 !checkpoints/.gitkeep
+!checkpoints/model_best.keras
 
 # Mac/Windows OS-Dateien (immer gut als Standard)
 .DS_Store
