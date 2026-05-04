@@ -1,0 +1,26 @@
+# Python Caches & kompilierte Dateien
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Sensible Dateien (API Keys etc.)
+lichess_bot.py
+
+# Temporäre Skripte & Notizen
+bak_*.py
+challenge_links.txt
+
+# Generierte Live-Daten und Logs
+current_game.json
+training_metrics.csv
+
+# Checkpoints ignorieren, aber Ordnerstruktur behalten
+checkpoints/*
+!checkpoints/.gitkeep
+
+# Mac/Windows OS-Dateien (immer gut als Standard)
+.DS_Store
+Thumbs.db
+
+scratch
+presentation

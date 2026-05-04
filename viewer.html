@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Chess Training Viewer</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: #0f0f1a;
+      color: #e0e0e0;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 2rem;
+    }
+
+    .container {
+      display: flex;
+      gap: 2rem;
+      align-items: flex-start;
+    }
+
+    .board-wrapper {
+      position: relative;
+    }
+
+    #board {
+      width: 480px;
+      height: 480px;
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      grid-template-rows: repeat(8, 1fr);
+      border: 3px solid #3a3a5c;
+      border-radius: 6px;
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    }
+
+    .square {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.8rem;
+      user-select: none;
+      transition: background 0.15s;
+    }
+
+    .square.light {
+      background: #b8c6db;
+    }
+
+    .square.dark {
+      background: #6b83a8;
+    }
+
+    .square.last-from {
+      background: #c8a84e !important;
+    }
+
+    .square.last-to {
+      background: #d4b95e !important;
+    }
+
+    .piece-white {
+      color: #fff;
+      text-shadow: -1px 0 1px #333, 0 1px 1px #333, 1px 0 1px #333, 0 -1px 1px #333;
+    }
+
+    .piece-black {
+      color: #222;
+      text-shadow: -1px 0 1px rgba(255, 255, 255, 0.4), 0 1px 1px rgba(255, 255, 255, 0.4),
+        1px 0 1px rgba(255, 255, 255, 0.4), 0 -1px 1px rgba(255, 255, 255, 0.4);
+    }
+
+    .panel {
+      background: #1a1a2e;
+      border: 1px solid #2a2a4a;
+      border-radius: 8px;
+      padding: 1.5rem;
+      width: 280px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    }
+
+    .panel h2 {
+      font-size: 1.1rem;
+      color: #8888cc;
+      margin-bottom: 1rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .stat {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid #2a2a4a;
+    }
+
+    .stat-label {
+      color: #8888aa;
+      font-size: 0.9rem;
+    }
+
+    .stat-value {
+      color: #e0e0ff;
+      font-weight: 600;
+    }
+
+    .status-replay {
+      display: inline-block;
+      background: #f59e0b;
+      color: #000;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 10px;
+      animation: pulse 1.5s infinite;
+    }
+
+    .result-badge {
+      display: inline-block;
+      font-size: 0.85rem;
+      font-weight: 700;
+      padding: 2px 10px;
+      border-radius: 10px;
+    }
+
+    .result-badge.white {
+      background: #e0e0e0;
+      color: #111;
+    }
+
+    .result-badge.black {
+      background: #333;
+      color: #eee;
+    }
+
+    .result-badge.draw {
+      background: #555;
+      color: #ccc;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.5;
+      }
+    }
+
+    .move-list {
+      max-height: 200px;
+      overflow-y: auto;
+      margin-top: 0.5rem;
+      font-family: 'Courier New', monospace;
+      font-size: 0.85rem;
+      color: #aaaacc;
+      line-height: 1.6;
+    }
+
+    .move-list::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .move-list::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .move-list::-webkit-scrollbar-thumb {
+      background: #4a4a6a;
+      border-radius: 2px;
+    }
+
+    .stats-bar {
+      display: flex;
+      height: 20px;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 0.5rem;
+    }
+
+    .stats-bar .white-bar {
+      background: #e0e0e0;
+    }
+
+    .stats-bar .draw-bar {
+      background: #666;
+    }
+
+    .stats-bar .black-bar {
+      background: #222;
+    }
+
+    .stats-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      margin-top: 0.3rem;
+    }
+
+    .stats-row .w {
+      color: #e0e0e0;
+    }
+
+    .stats-row .d {
+      color: #888;
+    }
+
+    .stats-row .b {
+      color: #aaa;
+    }
+
+    .eval-container {
+      margin-top: 1.5rem;
+    }
+
+    .eval-bar {
+      display: flex;
+      height: 24px;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 0.5rem;
+      border: 1px solid #3a3a5c;
+    }
+
+    .eval-bar .eval-white {
+      background: #e0e0e0;
+      transition: width 0.4s ease;
+    }
+
+    .eval-bar .eval-black {
+      background: #222;
+      transition: width 0.4s ease;
+    }
+
+    .eval-value {
+      text-align: center;
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-top: 0.3rem;
+      color: #ccc;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="board-wrapper">
+      <div id="board"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Training Viewer</h2>
+      <div class="stat">
+        <span class="stat-label">Spiel</span>
+        <span class="stat-value" id="game-num">—</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Zug</span>
+        <span class="stat-value" id="move-num">—</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Status</span>
+        <span id="status"><span class="status-replay">REPLAY</span></span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Ergebnis</span>
+        <span id="result">—</span>
+      </div>
+
+      <div class="eval-container">
+        <h2>Eval</h2>
+        <div class="eval-bar">
+          <div class="eval-white" id="eval-white" style="width:50%"></div>
+          <div class="eval-black" id="eval-black" style="width:50%"></div>
+        </div>
+        <div class="eval-value" id="eval-value">0.00</div>
+      </div>
+
+      <h2 style="margin-top: 1.5rem;">Statistik</h2>
+      <div class="stats-bar" id="stats-bar"></div>
+      <div class="stats-row">
+        <span class="w" id="stat-white">Weiß: 0</span>
+        <span class="d" id="stat-draw">Remis: 0</span>
+        <span class="b" id="stat-black">Schwarz: 0</span>
+      </div>
+
+      <h2 style="margin-top: 1.5rem;">Züge</h2>
+      <div class="move-list" id="move-list"></div>
+    </div>
+  </div>
+
+  <script>
+    const PIECE_SYMBOLS = {
+      'K': '♔', 'Q': '♕', 'R': '♖', 'B': '♗', 'N': '♘', 'P': '♙',
+      'k': '♚', 'q': '♛', 'r': '♜', 'b': '♝', 'n': '♞', 'p': '♟'
+    };
+
+    function isWhitePiece(ch) { return ch === ch.toUpperCase(); }
+
+    let serverData = null;
+    let currentGame = null;     // Spiel das gerade gezeigt wird
+    let viewIndex = 0;
+    let replayTimer = null;
+    let lastSeenNewest = -1;    // game_number des neuesten Spiels das wir kennen
+
+    async function fetchGame() {
+      try {
+        const resp = await fetch('/current_game.json?t=' + Date.now());
+        if (!resp.ok) return;
+        serverData = await resp.json();
+        renderStats();
+
+        if (!serverData.finished_games || serverData.finished_games.length === 0) return;
+
+        const games = serverData.finished_games;
+        const newest = games[games.length - 1];
+        lastSeenNewest = newest.game_number;
+
+        // Nur starten wenn gerade KEIN Replay läuft
+        if (!replayTimer && !currentGame) {
+          pickNextGame(games);
+        }
+      } catch (e) { }
+    }
+
+    let shownGames = new Set();
+
+    function startReplay(game) {
+      // Laufendes Replay abbrechen
+      if (replayTimer) { clearInterval(replayTimer); replayTimer = null; }
+
+      currentGame = game;
+      shownGames.add(game.game_number);
+      viewIndex = 0;
+      renderBoard();
+
+      replayTimer = setInterval(() => {
+        if (viewIndex < currentGame.fens.length - 1) {
+          viewIndex++;
+          renderBoard();
+        } else {
+          clearInterval(replayTimer);
+          replayTimer = null;
+          // Nach 2s nächstes Spiel suchen
+          setTimeout(() => { currentGame = null; }, 2000);
+        }
+      }, 500);
+    }
+
+    function pickNextGame(games) {
+      // Von neu nach alt: erstes ungezeigtes Spiel finden
+      for (let i = games.length - 1; i >= 0; i--) {
+        if (!shownGames.has(games[i].game_number)) {
+          startReplay(games[i]);
+          return;
+        }
+      }
+      // Alle gezeigt → neuestes nochmal
+      startReplay(games[games.length - 1]);
+      // Reset damit ältere wieder gezeigt werden können
+      shownGames.clear();
+      shownGames.add(games[games.length - 1].game_number);
+    }
+
+    // ── Board Rendering ──
+    function parseFen(fen) {
+      const rows = fen.split(' ')[0].split('/');
+      const board = [];
+      for (const row of rows) {
+        const r = [];
+        for (const ch of row) {
+          if (ch >= '1' && ch <= '8') {
+            for (let i = 0; i < parseInt(ch); i++) r.push(null);
+          } else {
+            r.push(ch);
+          }
+        }
+        board.push(r);
+      }
+      return board;
+    }
+
+    function squareName(rank, file) {
+      return String.fromCharCode(97 + file) + (8 - rank);
+    }
+
+    function renderBoard() {
+      if (!currentGame) return;
+
+      const fen = currentGame.fens[viewIndex];
+      const board = parseFen(fen);
+      const boardEl = document.getElementById('board');
+
+      let lastFrom = null, lastTo = null;
+      if (viewIndex > 0 && currentGame.moves[viewIndex - 1]) {
+        const uci = currentGame.moves[viewIndex - 1];
+        lastFrom = uci.substring(0, 2);
+        lastTo = uci.substring(2, 4);
+      }
+
+      boardEl.innerHTML = '';
+      for (let rank = 0; rank < 8; rank++) {
+        for (let file = 0; file < 8; file++) {
+          const sq = document.createElement('div');
+          const isLight = (rank + file) % 2 === 0;
+          sq.className = 'square ' + (isLight ? 'light' : 'dark');
+
+          const name = squareName(rank, file);
+          if (name === lastFrom) sq.classList.add('last-from');
+          if (name === lastTo) sq.classList.add('last-to');
+
+          const piece = board[rank][file];
+          if (piece) {
+            sq.textContent = PIECE_SYMBOLS[piece] || piece;
+            sq.classList.add(isWhitePiece(piece) ? 'piece-white' : 'piece-black');
+          }
+          boardEl.appendChild(sq);
+        }
+      }
+
+      document.getElementById('game-num').textContent = '#' + currentGame.game_number;
+      const totalMoves = currentGame.fens.length - 1;
+      document.getElementById('move-num').textContent = viewIndex + ' / ' + totalMoves;
+
+      // Eval Bar
+      const evalEl = document.getElementById('eval-value');
+      const evalWhiteEl = document.getElementById('eval-white');
+      const evalBlackEl = document.getElementById('eval-black');
+      if (currentGame.evals && viewIndex > 0 && viewIndex <= currentGame.evals.length) {
+        const ev = currentGame.evals[viewIndex - 1]; // eval nach Zug viewIndex
+        const whitePct = Math.max(2, Math.min(98, (ev + 1) / 2 * 100));
+        evalWhiteEl.style.width = whitePct + '%';
+        evalBlackEl.style.width = (100 - whitePct) + '%';
+        const sign = ev > 0 ? '+' : '';
+        evalEl.textContent = sign + ev.toFixed(2);
+        evalEl.style.color = ev > 0.2 ? '#e0e0e0' : ev < -0.2 ? '#888' : '#aaa';
+      } else {
+        evalWhiteEl.style.width = '50%';
+        evalBlackEl.style.width = '50%';
+        evalEl.textContent = '0.00';
+        evalEl.style.color = '#aaa';
+      }
+
+      const resultEl = document.getElementById('result');
+      if (viewIndex >= totalMoves && currentGame.result) {
+        const r = currentGame.result;
+        if (r === '1-0') resultEl.innerHTML = '<span class="result-badge white">1-0 Weiß</span>';
+        else if (r === '0-1') resultEl.innerHTML = '<span class="result-badge black">0-1 Schwarz</span>';
+        else resultEl.innerHTML = '<span class="result-badge draw">½-½ Remis</span>';
+      } else {
+        resultEl.textContent = '—';
+      }
+
+      const moveListEl = document.getElementById('move-list');
+      let html = '';
+      const showUpTo = Math.min(viewIndex, currentGame.moves.length);
+      for (let i = 0; i < showUpTo; i++) {
+        const num = Math.floor(i / 2) + 1;
+        const isWhite = i % 2 === 0;
+        const isCurrent = (i + 1 === viewIndex);
+        const style = isCurrent ? 'color:#fff;font-weight:bold;' : '';
+        if (isWhite) html += `<span style="color:#666">${num}.</span> `;
+        html += `<span style="${style}">${currentGame.moves[i]}</span> `;
+        if (!isWhite) html += '<br>';
+      }
+      moveListEl.innerHTML = html;
+      moveListEl.scrollTop = moveListEl.scrollHeight;
+    }
+
+    function renderStats() {
+      if (!serverData || !serverData.stats) return;
+      const s = serverData.stats;
+      const total = s.white_wins + s.black_wins + s.draws;
+
+      document.getElementById('stat-white').textContent = `Weiß: ${s.white_wins}`;
+      document.getElementById('stat-draw').textContent = `Remis: ${s.draws}`;
+      document.getElementById('stat-black').textContent = `Schwarz: ${s.black_wins}`;
+
+      const barEl = document.getElementById('stats-bar');
+      if (total > 0) {
+        const wp = (s.white_wins / total * 100).toFixed(1);
+        const dp = (s.draws / total * 100).toFixed(1);
+        const bp = (s.black_wins / total * 100).toFixed(1);
+        barEl.innerHTML =
+          `<div class="white-bar" style="width:${wp}%" title="Weiß ${wp}%"></div>` +
+          `<div class="draw-bar" style="width:${dp}%" title="Remis ${dp}%"></div>` +
+          `<div class="black-bar" style="width:${bp}%" title="Schwarz ${bp}%"></div>`;
+      }
+    }
+
+    setInterval(fetchGame, 500);
+    fetchGame();
+  </script>
+</body>
+
+</html>

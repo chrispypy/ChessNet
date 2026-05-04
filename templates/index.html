@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>MCTS Live Viewer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- chessboard.js -->
+    <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css" />
+    <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
+    <!-- chess.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #121212;
+            color: #fff;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            display: flex;
+            gap: 30px;
+            max-width: 1200px;
+            margin: auto;
+        }
+
+        .left-col {
+            width: 400px;
+        }
+
+        .right-col {
+            flex: 1;
+        }
+
+        #board {
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #1e1e1e;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        th,
+        td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #333;
+        }
+
+        th {
+            background: #2a2a2a;
+            font-weight: bold;
+            color: #aaa;
+            text-transform: uppercase;
+            font-size: 0.85em;
+        }
+
+        tr:hover {
+            background: #252525;
+        }
+
+        .fatal {
+            color: #ff4a4a;
+        }
+
+        .best {
+            color: #4aff8f;
+            font-weight: bold;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        select {
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #444;
+            background: #2a2a2a;
+            color: white;
+        }
+
+        button {
+            padding: 8px 16px;
+            background: #4caf50;
+            color: #111;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        button:hover {
+            background: #45a049;
+        }
+
+        button.engine-off {
+            background: #ff4a4a;
+            color: white;
+        }
+
+        button.setup-btn {
+            background: #2196f3;
+            color: white;
+        }
+
+        .stat-box {
+            background: #1e1e1e;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #4caf50;
+        }
+
+        .stat-val {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+
+        /* Hide unwanted spare pieces (Pawns, Knights, Bishops) */
+        div[class*="spare-pieces"] img[data-piece="wP"],
+        div[class*="spare-pieces"] img[data-piece="bP"],
+        div[class*="spare-pieces"] img[data-piece="wN"],
+        div[class*="spare-pieces"] img[data-piece="bN"],
+        div[class*="spare-pieces"] img[data-piece="wB"],
+        div[class*="spare-pieces"] img[data-piece="bB"] {
+            display: none !important;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <div class="left-col">
+            <h2 style="margin-top:0; display:flex; justify-content: space-between; align-items: center;">
+                ChessNet MCTS
+                <button id="engineToggleBtn" onclick="toggleEngine()">Engine: ON</button>
+            </h2>
+
+            <div id="board"></div>
+
+            <div class="controls" id="play_controls">
+                <select id="play_mode" onchange="updatePlayMode()" style="flex:1;">
+                    <option value="analysis">Mode: Analysis</option>
+                    <option value="play_white">Play vs Engine (You are White)</option>
+                    <option value="play_black">Play vs Engine (You are Black)</option>
+                    <option value="play_auto">Engine vs Engine (Auto-Play)</option>
+                </select>
+                <button onclick="undoMove()" style="padding: 8px; background: #555; color: white;"
+                    title="Undo (Back)">◀</button>
+                <button onclick="redoMove()" style="padding: 8px; background: #555; color: white;"
+                    title="Redo (Forward)">▶</button>
+                <button onclick="flipBoard()" style="padding: 8px; background: #555; color: white;">Flip</button>
+                <button class="setup-btn" onclick="startSetupMode()">Setup Board</button>
+
+                <div style="flex-basis: 100%; display: flex; gap: 10px; margin-top: 5px;">
+                    <input type="text" id="fen_input" placeholder="Paste FEN here..." style="flex:1;">
+                    <button onclick="setFen()">Set FEN</button>
+                </div>
+            </div>
+
+            <div class="controls" id="setup_controls"
+                style="display: none; background: #1e1e1e; padding: 10px; border-radius: 5px; border: 1px solid #2196f3;">
+                <div style="width: 100%; margin-bottom: 5px; color: #2196f3; font-weight: bold;">Setup Mode Active</div>
+                <button onclick="finishSetupMode('w')" style="flex:1; background: #e0e0e0; color: #111;">White to
+                    Move</button>
+                <button onclick="finishSetupMode('b')"
+                    style="flex:1; background: #333; color: #fff; border: 1px solid #555;">Black to Move</button>
+            </div>
+
+            <div class="controls">
+                <label>Max Sims (0=inf):</label>
+                <input type="number" id="sims_input" value="800" style="width: 80px;" onchange="setMaxSims()">
+            </div>
+        </div>
+
+        <div class="right-col">
+            <div style="display:flex; gap: 20px;">
+                <div class="stat-box" style="flex:1;">
+                    <div style="color:#aaa; font-size:0.9em; text-transform:uppercase;">Simulations Done</div>
+                    <div class="stat-val" id="sims_done">0</div>
+                </div>
+                <div class="stat-box" style="flex:1; border-left-color: #2196f3;">
+                    <div style="color:#aaa; font-size:0.9em; text-transform:uppercase;">Root Eval (Value)</div>
+                    <div class="stat-val" id="root_eval">0.000</div>
+                </div>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Move</th>
+                        <th>Visits</th>
+                        <th>Q-Value</th>
+                        <th>NN Prior</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="moves_table">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        var socket = io();
+        var board = null;
+        var game = new Chess();
+        var engineEnabled = true;
+        var setupMode = false;
+        var isEngineMakingMove = false;
+
+        // --- Mode Control ---
+        function updatePlayMode() {
+            var mode = document.getElementById('play_mode').value;
+            if (mode === 'play_white') {
+                board.orientation('white');
+                var simInput = document.getElementById('sims_input');
+                if (parseInt(simInput.value) <= 0) {
+                    simInput.value = 600; // force a reasonable limit, else engine never moves
+                    setMaxSims();
+                }
+            } else if (mode === 'play_black') {
+                board.orientation('black');
+                var simInput = document.getElementById('sims_input');
+                if (parseInt(simInput.value) <= 0) {
+                    simInput.value = 600;
+                    setMaxSims();
+                }
+            } else if (mode === 'play_auto') {
+                var simInput = document.getElementById('sims_input');
+                if (parseInt(simInput.value) <= 0) {
+                    simInput.value = 800;
+                    setMaxSims();
+                }
+            }
+            checkAutoPlay();
+        }
+
+        function checkAutoPlay(movesData, simsDone) {
+            if (setupMode || game.game_over() || isEngineMakingMove) return;
+            var mode = document.getElementById('play_mode').value;
+            var turn = game.turn();
+
+            var engineShouldMove = (mode === 'play_white' && turn === 'b') ||
+                (mode === 'play_black' && turn === 'w') ||
+                (mode === 'play_auto');
+
+            if (engineShouldMove && movesData && movesData.length > 0) {
+                var targetSims = parseInt(document.getElementById('sims_input').value);
+                if (targetSims > 0 && simsDone >= targetSims) {
+                    isEngineMakingMove = true;
+                    // Wait briefly for UX
+                    setTimeout(function () {
+                        playUci(movesData[0].uci); // Top move is index 0
+                        isEngineMakingMove = false;
+                    }, 400);
+                }
+            }
+        }
+
+        function flipBoard() {
+            if (!setupMode) board.flip();
+        }
+
+        // --- Normal Play Mode ---
+        function onDragStart(source, piece, position, orientation) {
+            if (setupMode) return true;
+            if (game.game_over()) return false;
+            if ((game.turn() === 'w' && piece.search(/^b/) !== -1) ||
+                (game.turn() === 'b' && piece.search(/^w/) !== -1)) {
+                return false;
+            }
+
+            var mode = document.getElementById('play_mode').value;
+            if (mode === 'play_auto') return false;
+            if (mode === 'play_white' && game.turn() === 'b') return false;
+            if (mode === 'play_black' && game.turn() === 'w') return false;
+        }
+
+        function onDrop(source, target) {
+            if (setupMode) return;
+
+            var move = game.move({
+                from: source,
+                to: target,
+                promotion: 'q'
+            });
+
+            if (move === null) return 'snapback';
+            socket.emit('make_move', { uci: move.from + move.to + (move.promotion ? move.promotion : '') });
+        }
+
+        function onSnapEnd() {
+            if (!setupMode) board.position(game.fen());
+        }
+
+        var playConfig = {
+            draggable: true,
+            position: 'start',
+            onDragStart: onDragStart,
+            onDrop: onDrop,
+            onSnapEnd: onSnapEnd,
+            pieceTheme: 'https://lichess1.org/assets/piece/cburnett/{piece}.svg'
+        };
+
+        board = Chessboard('board', playConfig);
+
+        // --- Setup Mode ---
+        function startSetupMode() {
+            setupMode = true;
+            setEngineState(false);
+
+            document.getElementById('play_controls').style.display = 'none';
+            document.getElementById('setup_controls').style.display = 'flex';
+            document.getElementById('moves_table').innerHTML = '';
+
+            var currentFen = board.fen();
+            var currentOrient = board.orientation();
+            board.destroy();
+
+            board = Chessboard('board', {
+                draggable: true,
+                dropOffBoard: 'trash',
+                sparePieces: true,
+                position: currentFen,
+                orientation: currentOrient,
+                pieceTheme: 'https://lichess1.org/assets/piece/cburnett/{piece}.svg'
+            });
+        }
+
+        function finishSetupMode(colorToMove) {
+            setupMode = false;
+            var fen = board.fen() + " " + colorToMove + " - - 0 1";
+
+            document.getElementById('play_controls').style.display = 'flex';
+            document.getElementById('setup_controls').style.display = 'none';
+
+            var currentOrient = board.orientation();
+            board.destroy();
+            playConfig.orientation = currentOrient;
+            board = Chessboard('board', playConfig);
+
+            document.getElementById('fen_input').value = fen;
+            setFen();
+        }
+
+        // --- Engine Controls ---
+        function toggleEngine() {
+            setEngineState(!engineEnabled);
+        }
+
+        function setEngineState(state) {
+            engineEnabled = state;
+            var btn = document.getElementById('engineToggleBtn');
+            if (engineEnabled) {
+                btn.innerText = "Engine: ON";
+                btn.className = "";
+            } else {
+                btn.innerText = "Engine: OFF";
+                btn.className = "engine-off";
+            }
+            socket.emit('set_engine_state', { enabled: engineEnabled });
+        }
+
+        // --- Socket Events ---
+        socket.on('board_state', function (data) {
+            if (setupMode) return;
+            game.load(data.fen);
+            board.position(data.fen);
+            document.getElementById('fen_input').value = data.fen;
+            document.getElementById('moves_table').innerHTML = '';
+        });
+
+        socket.on('mcts_update', function (data) {
+            if (setupMode || !engineEnabled) return;
+            document.getElementById('sims_done').innerText = data.sims_done;
+
+            var isBlack = game.turn() === 'b';
+            var whiteEval = isBlack ? -data.root_eval : data.root_eval;
+            var evalStr = (whiteEval > 0 ? "+" : "") + parseFloat(whiteEval).toFixed(4);
+            document.getElementById('root_eval').innerText = evalStr;
+
+            var html = '';
+            var maxVisits = -1;
+            if (data.moves.length > 0) maxVisits = data.moves[0].visits;
+
+            data.moves.forEach(function (m, i) {
+                var cls = "";
+                var qWhite = isBlack ? -m.q : m.q;
+                var q_str = (qWhite > 0 && m.q !== -1.0 ? "+" : "") + parseFloat(qWhite).toFixed(4);
+
+                if (m.q === -1.0) {
+                    cls = "fatal";
+                    q_str = isBlack ? "+inf (FATAL)" : "-inf (FATAL)";
+                } else if (m.visits === maxVisits && maxVisits > 0) {
+                    cls = "best";
+                }
+
+                html += `<tr class="${cls}">
+                <td><strong>${m.san}</strong> <span style="color:#666;font-size:0.8em;">(${m.uci})</span></td>
+                <td>${m.visits}</td>
+                <td>${q_str}</td>
+                <td>${(m.prior * 100).toFixed(1)}%</td>
+                <td><button onclick="playUci('${m.uci}')" style="padding: 4px 8px; font-size:12px;">Play</button></td>
+            </tr>`;
+            });
+            document.getElementById('moves_table').innerHTML = html;
+
+            // Auto-Play Trigger
+            checkAutoPlay(data.moves, data.sims_done);
+        });
+
+        function setFen() {
+            var fen = document.getElementById('fen_input').value;
+            socket.emit('set_fen', { fen: fen });
+            if (!engineEnabled && !setupMode) {
+                setEngineState(true);
+            }
+        }
+
+        function playUci(uci) {
+            socket.emit('make_move', { uci: uci });
+        }
+
+        function setMaxSims() {
+            var sims = document.getElementById('sims_input').value;
+            socket.emit('set_max_sims', { max_sims: parseInt(sims) });
+        }
+
+        function undoMove() {
+            socket.emit('undo_move');
+        }
+
+        function redoMove() {
+            socket.emit('redo_move');
+        }
+    </script>
+</body>
+
+</html>
