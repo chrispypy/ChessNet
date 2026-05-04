@@ -1,24 +1,24 @@
-## Usage / Verwendung
+## Usage
 
-### 1. Das vortrainierte Modell testen
-Im Verzeichnis `/checkpoints` liegt bereits das aktuell stärkste, vortrainierte Modell (`model_best.keras`). Du kannst dieses "Out-of-the-Box" verwenden, um direkt gegen die Engine zu spielen oder die Performance des Netzwerks zu testen, ohne erst eigene Rechenzeit in das Self-Play investieren zu müssen.
+### 1. Testing the pre-trained model
+The `/checkpoints` directory already contains the currently strongest pre-trained model (`model_best.keras`). You can use this out-of-the-box to play directly against the engine or test the network's performance without investing your own compute time into self-play.
 
-### 2. Eigenes Training (Self-Play) starten
-Um den Lernprozess von Grund auf neu zu starten und das neuronale Netz durch Self-Play trainieren zu lassen, genügt folgender Befehl:
+### 2. Starting your own training (Self-Play)
+To start the learning process from scratch and train the neural network via self-play, simply run the following command:
 
     python selfplay.py
 
-Hinweis zu den Startstellungen: Das Training nutzt einen Curriculum-Learning-Ansatz. Um zu Beginn sinnvolle und lösbare Endspiele (wie KQvK oder KRvK) zu generieren, greift das Skript auf 3- und 4-Steiner Syzygy-Tablebases zurück. Diese sind im Ordner `/syzygy` bereits vollständig enthalten, du musst also nichts weiter herunterladen. Alle benötigten Output-Verzeichnisse (z. B. für neue Checkpoints) werden automatisch erstellt.
+Note on starting positions: The training uses a curriculum learning approach. To generate meaningful and solvable endgames (like KQvK or KRvK) at the beginning, the script relies on 3- and 4-piece Syzygy tablebases. These are already fully included in the `/syzygy` directory, so you don't need to download anything else. All required output directories (e.g., for new checkpoints) are created automatically.
 
-### 3. Live-Viewer: Dem Lernprozess zuschauen
-Das Projekt beinhaltet ein eigenes, lokales Web-Dashboard, um den Trainingsfortschritt und das MCTS in Echtzeit zu visualisieren. Lass dazu `selfplay.py` laufen und starte in einem zweiten Terminal-Fenster den Server:
+### 3. Live Viewer: Watching the learning process
+The project includes a custom local web dashboard to visualize the training progress and MCTS in real-time. To use it, keep `selfplay.py` running and start the server in a second terminal window:
 
     python serve_viewer.py
 
-Öffne anschließend einfach `http://localhost:8080` in deinem Browser. Du siehst dort live die aktuellen Brettstellungen, die Zug-Historie und die Evaluation (Win/Loss-Probability) des neuronalen Netzes.
+Then, simply open `http://localhost:8080` in your browser. You will see the current board states, move history, and the network's evaluation (win/loss probability) live.
 
-### 4. Wichtiger Hinweis zur Evaluierung (Best Model Tracking)
-Das Trainingsskript beinhaltet einen automatisierten Battle-Modus: Alle paar Epochen tritt das neu trainierte Modell gegen das bisher beste Modell an. Nur wenn das neue Modell gewinnt, wird es als neues `model_best.keras` gespeichert.
+### 4. Important note on evaluation (Best Model Tracking)
+The training script includes an automated battle mode: every few epochs, the newly trained model plays against the current best model. Only if the new model wins is it saved as the new `model_best.keras`.
 
-Wenn du dein Training komplett bei Null (Tabula Rasa) beginnen möchtest:
-Bitte benenne vorher das mitgelieferte Modell im Ordner `/checkpoints` um oder lösche es. Warum? Da das mitgelieferte Modell bereits sehr stark ist, wird dein neues, untrainiertes Netz am Anfang jedes Evaluierungsspiels verlieren. Es würde unverhältnismäßig lange dauern, bis dein Netz dieses hohe Niveau erreicht hat und den internen Benchmark schlägt.
+If you want to start your training completely from scratch (tabula rasa):
+Please rename or delete the provided model in the `/checkpoints` directory beforehand. Why? Since the included model is already very strong, your new, untrained network will lose every evaluation game initially. It would take a disproportionately long time for your network to reach this high level and beat the internal benchmark.
